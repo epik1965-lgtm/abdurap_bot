@@ -13,14 +13,6 @@ SUPPORT_USERNAME = "@Alexander_Epik"
 # Ссылки на Google Forms
 FORM_1_URL = "https://forms.gle/xEVdkxzgUQa3cBAw6"   # карта тревожности
 FORM_2_URL = "https://forms.gle/x8hXPySScixkKZtd8"   # карта усталости
-DIABET_WORDS = ["диабет", "diabet", "diabetes"]
-
-@dp.message_handler(lambda m: any(w.lower() in m.text.lower() for w in DIABET_WORDS))
-async def send_diabet_guide(message: types.Message):
-    await message.answer("Отправляю вам гайд по самому раннему сигналу диабета 💡")
-    await message.answer_document(open("guide_diabet.pdf", "rb"))
-
-logging.basicConfig(level=logging.INFO)
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
@@ -116,6 +108,15 @@ async def buttons(message: types.Message):
 # ---- ЗАПУСК ----
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
+DIABET_WORDS = ["диабет", "diabet", "diabetes"]
+
+@dp.message_handler(lambda m: any(w.lower() in m.text.lower() for w in DIABET_WORDS))
+async def send_diabet_guide(message: types.Message):
+    await message.answer("Отправляю вам гайд по самому раннему сигналу диабета 💡")
+    await message.answer_document(open("guide_diabet.pdf", "rb"))
+
+logging.basicConfig(level=logging.INFO)
 
 
 
