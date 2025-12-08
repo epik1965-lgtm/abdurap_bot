@@ -95,9 +95,14 @@ async def send_diabet_auto(message: types.Message):
     await message.answer("Отправляю вам гайд по ранним сигналам диабета 💡")
     await message.answer_document(open("guide_diabet.pdf", "rb"))
 
+@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in BILE_WORDS))
+async def send_bile_auto(message: types.Message):
+    await message.answer("Отправляю вам гайд по желчи.")
+    await message.answer_document(open("liver_guide.pdf", "rb"))
 
 # ------------------------------
 #   MAIN LOOP
 # ------------------------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
