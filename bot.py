@@ -108,7 +108,6 @@ THYROID_WORDS = ["щитовидка", "шитовидка"]  # Щитовидк
 async def send_thyroid_auto(message: types.Message):
     upsert_user(message)
     log_action(message, "trigger_word", "щитовидка")
-
     await message.answer("Отправляю вам гайд по щитовидной железе.")
     await message.answer_document(open("hipo_guide.pdf", "rb"))
 
@@ -117,5 +116,6 @@ async def send_thyroid_auto(message: types.Message):
 # ------------------------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
 
 
