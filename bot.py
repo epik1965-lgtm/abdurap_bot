@@ -14,6 +14,9 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
+DB_PATH = "bot.db"
+
+
 
 # ------------------------------
 #  КНОПКИ
@@ -202,8 +205,12 @@ async def send_bile_auto(message: types.Message):
 # ------------------------------
 #   MAIN LOOP
 # ------------------------------
+
 if __name__ == "__main__":
+    init_db()
     executor.start_polling(dp, skip_updates=True)
+
+
 
 
 
