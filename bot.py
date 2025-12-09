@@ -102,8 +102,18 @@ async def send_bile_auto(message: types.Message):
     await message.answer("Отправляю вам гайд по желчи.")
     await message.answer_document(open("liver_guide.pdf", "rb"))
 
+THYROID_WORDS = ["щитовидка", "шитовидка"]  # Щитовидка, щитовидка, шитовидка
+@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in THYROID_WORDS))
+async def send_thyroid_auto(message: types.Message):
+    upsert_user(message)
+    log_action(message, "trigger_word", "щитовидка")
+
+    await message.answer("Отправляю вам гайд по щитовидной железе.")
+    await message.answer_document(open("hipo_guide.pdf", "rb"))
+
 # ------------------------------
 #   MAIN LOOP
 # ------------------------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
