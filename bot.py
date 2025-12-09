@@ -34,7 +34,104 @@ def main_menu():
     keyboard.add(btn_channel)
 
     return keyboard
+# ------------------------------
+#   БАЗА ДАННЫХ
+# ------------------------------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
 
+    # Таблица пользователей
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            user_id     INTEGER PRIMARY KEY,
+            username    TEXT,
+            first_name  TEXT,
+            last_name   TEXT,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    # Таблица действий
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS actions (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER,
+            action      TEXT,
+            meta        TEXT,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def upsert_user(message: types.Message):
+    user = message.from_user
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO users (user_id, username, first_name, last_name)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            username    = excluded.username,
+            first_name  = excluded.first_name,
+            last_name   = excluded.last_name,
+            last_seen_at = CURRENT_TIMESTAMP
+        """,
+        (user.id, user.username, user.first_name, user.last_name),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+def log_action(message: types.Message, action: str, meta: str | None = None):
+    user_id = message.from_user.id
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO actions (user_id, action, meta)
+        VALUES (?, ?, ?)
+        """,
+        (user_id, action, meta),
+    )
+
+    conn.commit()
+    conn.close()
+
+
+# ------------------------------
+#  КНОПКИ
+# ------------------------------
+def main_menu():
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+
+    btn_guide = "📘 Получить гайд"
+    btn_support = "🆘 Поддержка"
+    btn_test1 = "🧠 Пройти тест: карта тревожности"
+    btn_test2 = "💤 Пройти тест: карта усталости"
+    btn_channel = "📨 Telegram-канал"
+
+    keyboard.add(btn_guide)
+    keyboard.add(btn_test1)
+    keyboard.add(btn_test2)
+    keyboard.add(btn_support)
+    keyboard.add(btn_channel)
+
+    return keyboard
 
 # ------------------------------
 #   START COMMAND
@@ -107,5 +204,6 @@ async def send_bile_auto(message: types.Message):
 # ------------------------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
 
 
