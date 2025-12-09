@@ -107,13 +107,14 @@ THYROID_WORDS = ["щитовидка", "шитовидка"]  # Щитовидк
 @dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in THYROID_WORDS))
 async def send_thyroid_auto(message: types.Message):
     await message.answer("Отправляю вам гайд по щитовидной железе.")
-    await message.answer_document(open("hipo_guide.pdf", "rb"))
+    await message.answer_document(open("hipo_guide1.pdf", "rb"))
 
 # ------------------------------
 #   MAIN LOOP
 # ------------------------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
 
 
 
