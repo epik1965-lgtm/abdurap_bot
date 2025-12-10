@@ -109,11 +109,27 @@ async def send_thyroid_auto(message: types.Message):
     await message.answer("Отправляю вам гайд по щитовидной железе.")
     await message.answer_document(open("hipo_guide1.pdf", "rb"))
 
+VITD_WORDS = [
+    "витамин d",
+    "витамин д",
+    "вит д",
+    "д",
+    "Д"
+]
+
+
+@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in VITD_WORDS))
+async def send_vitd_auto(message: types.Message):
+    await message.answer("Отправляю вам гайд по витамину D.")
+    await message.answer_document(open("vit_d.pdf", "rb"))
+
+
 # ------------------------------
 #   MAIN LOOP
 # ------------------------------
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
 
 
 
