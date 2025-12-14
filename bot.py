@@ -1,134 +1,195 @@
 import logging
 import os
+import asyncio
+from datetime import datetime, timedelta
 
+import pytz
 from aiogram import Bot, Dispatcher, types
 from aiogram.utils import executor
 
-# --- TOKEN ---
-TOKEN = os.getenv("TOKEN")   # Railway environment variable
+# ===============================
+#   НАСТРОЙКИ
+# ===============================
 
-# --- LOGGING ---
+TOKEN = os.getenv("TOKEN")
+if not TOKEN:
+    raise ValueError("TOKEN is not set")
+
+TIMEZONE = pytz.timezone("Europe/Moscow")
+SEND_HOUR = 2
+SEND_MINUTE = 0
+
+USERS_FILE = "users.txt"
+
 logging.basicConfig(level=logging.INFO)
 
-# --- BOT & DISPATCHER ---
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
+# ===============================
+#   СООБЩЕНИЯ
+# ===============================
 
-# ------------------------------
-#  КНОПКИ
-# ------------------------------
-def main_menu():
-    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+MESSAGES = [
+    # Сообщение 1
+    """Тревога за диабет не берётся из ниоткуда.
+Усталость, тянет на сладкое, вес растёт, в семье у кого-то уже диабет — и в голове картинка: «я следующая» 😶‍🌫️
+Сдаёшь сахар — «вроде норма», а внутри легче не становится.
 
-    btn_guide = "📘 Получить гайд"
-    btn_support = "🆘 Поддержка"
-    btn_test1 = "🧠 Пройти тест: карта тревожности"
-    btn_test2 = "💤 Пройти тест: карта усталости"
-    btn_channel = "📨 Telegram-канал"
+Это не про «накрутила себя».
+Чаще всего тело правда даёт сигналы: сахар, желчь, ЖКТ, щитовидка, стресс, надпочечники — всё давно связано между собой, просто никто не собрал это в одну схему.""",
 
-    keyboard.add(btn_guide)
-    keyboard.add(btn_test1)
-    keyboard.add(btn_test2)
-    keyboard.add(btn_support)
-    keyboard.add(btn_channel)
+    # Сообщение 2
+    """Диабет редко начинается по принципу «вчера всё было хорошо, сегодня — диагноз».
 
-    return keyboard
+Сначала идёт длинный коридор:
+– инсулинорезистентность,
+– скачки сахара,
+– лишний вес именно на животе,
+– срывы на сладкое,
+– сонливость после еды,
+– хронический стресс, недосып, «нервы на пределе».
 
+Это стадия, на которой ещё можно разворачивать ситуацию, если понимать, что смотреть и что менять.""",
 
-# ------------------------------
-#   START COMMAND
-# ------------------------------
-@dp.message_handler(commands=["start"])
-async def start_handler(message: types.Message):
-    await message.answer(
-        "Добро пожаловать! 👋\n\nВыберите действие:",
-        reply_markup=main_menu()
-    )
+    # Сообщение 3
+    """В эту историю почти всегда включается не только сахар.
 
+Желчь и ЖКТ: застой желчи = жиры хуже перевариваются, растёт воспаление, меняется чувствительность к инсулину.
 
-# ------------------------------
-#   ХЕНДЛЕРЫ НАЖАТИЙ КНОПОК
-# ------------------------------
+Щитовидка: если она тормозит — падает метаболизм, холод, отёки, усталость.
 
-@dp.message_handler(lambda m: m.text == "📘 Получить гайд")
-async def send_guide(message: types.Message):
-    await message.answer_document(open("guide.pdf", "rb"))
+Стресс и надпочечники: кортизол годами держит организм в тревоге.
 
+То есть тревога про диабет — это связка:
+инсулин + желчь + ЖКТ + щитовидка + стресс.""",
 
-@dp.message_handler(lambda m: m.text == "🧠 Пройти тест: карта тревожности")
-async def anxiety_test(message: types.Message):
-    await message.answer(
-        "🧠 Тест на карту вашей тревожности:\n"
-        "https://forms.gle/xEVdkxzgUQa3cBAw6"
-    )
+    # Сообщение 4
+    """Типичные сигналы от желчи и ЖКТ:
+– горечь во рту по утрам;
+– тяжесть или боль справа под рёбрами;
+– вздутие после жирной еды;
+– нестабильный стул.
 
+Параллельно:
+– усталость,
+– туман в голове,
+– тревожность,
+– плохой сон,
+– зябкость и отёки.
 
-@dp.message_handler(lambda m: m.text == "💤 Пройти тест: карта усталости")
-async def fatigue_test(message: types.Message):
-    await message.answer(
-        "💤 Тест на карту вашей усталости:\n"
-        "https://forms.gle/x8hXPySScixkKZtd8"
-    )
+Это не 10 болезней.
+Это одна цепочка.""",
 
+    # Сообщение 5
+    """Мини-чек.
 
-@dp.message_handler(lambda m: m.text == "🆘 Поддержка")
-async def support(message: types.Message):
-    await message.answer(
-        "Если вам нужна помощь — пишите сюда:\n@Alexander_Epik"
-    )
+Ответь себе «да/нет»:
 
+– тянет на сладкое;
+– после еды клонит в сон;
+– есть горечь во рту;
+– тяжесть справа;
+– вес растёт в животе;
+– мерзнешь, отекаешь;
+– нервы и плохой сон.
 
-@dp.message_handler(lambda m: m.text == "📨 Telegram-канал")
-async def channel(message: types.Message):
-    await message.answer("Наш канал: https://t.me/+ZNYZ9n3nJwoyMzIy")
+Если «да» больше 2–3 — это уже системный сбой, а не фантазии.""",
 
+    # Сообщение 6
+    """Внутри закрытого сообщества мы собираем это в схему.
 
-# ------------------------------
-#   АВТО-ОТПРАВКА ГАЙДА ПО СЛОВУ «ДИАБЕТ»
-# ------------------------------
-DIABET_WORDS = ["диабет", "diabet", "diabetes"]
+Разбираем:
+– где тревога обоснована,
+– какие анализы нужны,
+– как связаны сахар, желчь, ЖКТ, щитовидка, стресс,
+– какие первые шаги реально облегчают состояние.
 
+Без диет, без фанатизма, без запугивания.""",
 
-@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in DIABET_WORDS))
-async def send_diabet_auto(message: types.Message):
-    await message.answer("Отправляю вам гайд по ранним сигналам диабета 💡")
-    await message.answer_document(open("guide_diabet.pdf", "rb"))
+    # Сообщение 7
+    """Если ты живёшь с мыслью «я докачусь до диабета»
+и параллельно мучают вздутие, усталость, тревога и срывы —
 
-BILE_WORDS = ["желчь","Желчь","ЖЕЛЧЬ"]
+нет смысла дальше ходить по кругу.
 
-@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in BILE_WORDS))
-async def send_bile_auto(message: types.Message):
-    await message.answer("Отправляю вам гайд по желчи.")
-    await message.answer_document(open("liver_guide.pdf", "rb"))
-
-THYROID_WORDS = ["щитовидка", "шитовидка"]  # Щитовидка, щитовидка, шитовидка
-
-@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in THYROID_WORDS))
-async def send_thyroid_auto(message: types.Message):
-    await message.answer("Отправляю вам гайд по щитовидной железе.")
-    await message.answer_document(open("hipo_guide1.pdf", "rb"))
-
-VITD_WORDS = [
-    "витамин d",
-    "витамин д",
-    "вит д",
-    "д",
-    "Д"
+Подписывайся на закрытое сообщество по кнопке ниже.
+Внутри — разборы, чек-листы и понятный план действий."""
 ]
 
+# ===============================
+#   USERS STORAGE
+# ===============================
 
-@dp.message_handler(lambda m: m.text and any(w in m.text.lower() for w in VITD_WORDS))
-async def send_vitd_auto(message: types.Message):
-    await message.answer("Отправляю вам гайд по витамину D.")
-    await message.answer_document(open("vit_d.pdf", "rb"))
+def load_users():
+    users = {}
+    if os.path.exists(USERS_FILE):
+        with open(USERS_FILE, "r") as f:
+            for line in f:
+                uid, idx = line.strip().split("|")
+                users[int(uid)] = int(idx)
+    return users
 
 
-# ------------------------------
-#   MAIN LOOP
-# ------------------------------
+def save_users(users):
+    with open(USERS_FILE, "w") as f:
+        for uid, idx in users.items():
+            f.write(f"{uid}|{idx}\n")
+
+# ===============================
+#   START
+# ===============================
+
+@dp.message_handler(commands=["start"])
+async def start_handler(message: types.Message):
+    users = load_users()
+    uid = message.from_user.id
+
+    if uid not in users:
+        users[uid] = 1  # следующее сообщение — №2
+        save_users(users)
+
+    await message.answer(MESSAGES[0])
+
+# ===============================
+#   DAILY SENDER
+# ===============================
+
+async def daily_sender():
+    while True:
+        now = datetime.now(TIMEZONE)
+        target = now.replace(hour=SEND_HOUR, minute=SEND_MINUTE, second=0, microsecond=0)
+        if now >= target:
+            target += timedelta(days=1)
+
+        await asyncio.sleep((target - now).total_seconds())
+
+        users = load_users()
+
+        for uid, idx in list(users.items()):
+            if idx < len(MESSAGES):
+                try:
+                    await bot.send_message(uid, MESSAGES[idx])
+                    users[uid] += 1
+                except Exception as e:
+                    logging.warning(f"Failed to send to {uid}: {e}")
+
+        save_users(users)
+
+# ===============================
+#   STARTUP
+# ===============================
+
+async def on_startup(dp):
+    asyncio.create_task(daily_sender())
+
+# ===============================
+#   MAIN
+# ===============================
+
 if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp, skip_updates=True, on_startup=on_startup)
+
 
 
 
